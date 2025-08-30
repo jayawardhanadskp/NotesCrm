@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:notes_crm/core/network/api_helper.dart';
 import 'package:notes_crm/screens/customer/customer_tab_screen.dart';
 import 'package:notes_crm/screens/notes/notes_tab_screen.dart';
 
@@ -18,11 +17,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const NoteListScreen(),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    ApiHelper().fetchUsers();
-  }
 
   @override
   Widget build(BuildContext context) {

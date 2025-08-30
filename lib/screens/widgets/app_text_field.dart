@@ -36,7 +36,7 @@ class AppTextField extends StatelessWidget {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
-          keyboardType: TextInputType.emailAddress,
+          keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hintText,
 

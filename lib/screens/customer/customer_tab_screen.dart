@@ -23,6 +23,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (ModalRoute.of(context)?.isCurrent == true) {
+      context.read<CustomerBloc>().add(LoadCustomers());
+    }
   }
 
   String _getInitials(String name) {
@@ -41,6 +44,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       appBar: AppBar(
         title: const Text('Customers'),
         backgroundColor: const Color(0xFF121212),
+        centerTitle: true,
         actions: [
           BlocBuilder<CustomerBloc, CustomerState>(
             builder: (context, state) {

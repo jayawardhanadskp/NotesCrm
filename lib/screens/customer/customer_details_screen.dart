@@ -104,13 +104,7 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
           appBar: AppBar(
             title: Text(customer.name),
             backgroundColor: const Color(0xFF121212),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios),
-              onPressed: () {
-                Navigator.of(context).pop();
-                context.read<CustomerBloc>().add(LoadCustomers());
-              },
-            ),
+            
             actions: [
               PopupMenuButton(
                 itemBuilder: (context) => [

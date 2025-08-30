@@ -25,6 +25,7 @@ class _NoteListScreenState extends State<NoteListScreen> {
       appBar: AppBar(
         title: const Text('Notes'),
         backgroundColor: const Color(0xFF121212),
+        centerTitle: true,
         actions: [
           BlocBuilder<NoteBloc, NoteState>(
             builder: (context, state) {
@@ -96,99 +97,105 @@ class _NoteListScreenState extends State<NoteListScreen> {
               );
             }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: notes.length,
-              itemBuilder: (context, index) {
-                final note = notes[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 15,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF1E1E1E),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.7),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              note.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 18,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            DateFormat(
-                              'MMM dd, yyyy\n hh:mm a',
-                            ).format(DateTime.parse(note.createdAt)),
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
-                            textAlign: TextAlign.right,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFFC107),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (note.customerName != null)
-                            Text(
-                              note.customerName!,
-                              style: const TextStyle(
-                                color: Color(0xFFB3B3B3),
-                                fontWeight: FontWeight.w500,
-                                fontSize: 15,
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: MediaQuery.of(context).size.width,
-                        padding: EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: Color.fromARGB(101, 18, 18, 18),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: (note.description.isNotEmpty)
-                            ? Text(
-                                note.description,
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
-                              )
-                            : SizedBox(),
-                      ),
-                    ],
-                  ),
-                );
+            return RefreshIndicator.adaptive(
+              onRefresh: () {
+                context.read<NoteBloc>().add(LoadAllNotesWithCustomerNames());
+                return Future.value();
               },
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: notes.length,
+                itemBuilder: (context, index) {
+                  final note = notes[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 15,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF1E1E1E),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.7),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                note.title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              DateFormat(
+                                'MMM dd, yyyy\n hh:mm a',
+                              ).format(DateTime.parse(note.createdAt)),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFC107),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (note.customerName != null)
+                              Text(
+                                note.customerName!,
+                                style: const TextStyle(
+                                  color: Color(0xFFB3B3B3),
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 15,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: MediaQuery.of(context).size.width,
+                          padding: EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            color: Color.fromARGB(101, 18, 18, 18),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: (note.description.isNotEmpty)
+                              ? Text(
+                                  note.description,
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                )
+                              : SizedBox(),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             );
           }
           return const SizedBox.shrink();

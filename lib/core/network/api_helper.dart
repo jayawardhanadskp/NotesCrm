@@ -37,6 +37,8 @@ class ApiHelper {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
+          receiveTimeout: const Duration(seconds: 15),
+          sendTimeout: const Duration(seconds: 15),
         ),
       );
 
