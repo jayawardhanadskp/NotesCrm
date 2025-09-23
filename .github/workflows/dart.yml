@@ -2,17 +2,19 @@ name: Flutter CI/CD
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]
   pull_request:
-    branches:
-      - master
+    branches: [master]
   workflow_dispatch:
 
 jobs:
   Build_Android:
-    name: Build and Deploy Android APK
+    name: Build Flutter APK - ${{ matrix.build_type }}
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        build_type: [release, debug]
 
     steps:
       - name: Checkout Code
@@ -24,67 +26,76 @@ jobs:
           java-version: "17.x"
 
       - name: Setup Flutter
-        uses: subosito/Flutter-action@v2
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Run Tests and Save Report
+        run: |
+          mkdir -p test-report
+          flutter test > test-report/test-report-${{ matrix.build_type }}.txt
 
-      - name: List build folder (for debugging)
+      - name: Build APK (${{ matrix.build_type }})
+        run: flutter build apk --${{ matrix.build_type }}
+
+      - name: List build folder
         run: ls -al build/app/outputs/flutter-apk/
 
-      - name: Rename APK file with version and run number
+      - name: Rename APK to match build type and version
         id: rename
         run: |
-          VERSION_NAME="v1.0.0-${{ github.run_number }}"
-          FILE_NAME="crm-$VERSION_NAME.apk"
-          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "FILE_NAME=$FILE_NAME" >> "$GITHUB_OUTPUT"
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/$FILE_NAME
+          VERSION="v1.0.0-${{ github.run_number }}"
+          FILE_NAME="crm-${{ matrix.build_type }}-$VERSION.apk"
+          REPORT_NAME="test-report-${{ matrix.build_type }}-$VERSION.txt"
+          mv build/app/outputs/flutter-apk/app-${{ matrix.build_type }}.apk build/app/outputs/flutter-apk/$FILE_NAME
+          mv test-report/test-report-${{ matrix.build_type }}.txt test-report/$REPORT_NAME
+          echo "FILE_NAME=$FILE_NAME" >> $GITHUB_OUTPUT
+          echo "REPORT_NAME=$REPORT_NAME" >> $GITHUB_OUTPUT
 
-      - name: Upload APK to AWS S3 Bucket
-        uses: jakejarvis/s3-sync-action@master
-        env:
-          AWS_S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: 'eu-north-1'
-          SOURCE_DIR: 'build/app/outputs/flutter-apk'
-
-      - name: Generate pre-signed APK URL
-        id: presign
+      - name: Upload APK and Test Report to S3
         run: |
-          URL=$(aws s3 presign s3://${{ secrets.S3_BUCKET_NAME }}/${{ steps.rename.outputs.FILE_NAME }} --expires-in 86400)
-          echo "PRE_SIGNED_URL=$URL" >> "$GITHUB_OUTPUT"
+          aws s3 cp build/app/outputs/flutter-apk/${{ steps.rename.outputs.FILE_NAME }} s3://${{ secrets.S3_BUCKET_NAME }}/
+          aws s3 cp test-report/${{ steps.rename.outputs.REPORT_NAME }} s3://${{ secrets.S3_BUCKET_NAME }}/
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: 'eu-north-1'
 
-      - name: Upload APK to GitHub Release
+      - name: Generate Pre-signed URLs
+        id: presign
+        run: |
+          APK_URL=$(aws s3 presign s3://${{ secrets.S3_BUCKET_NAME }}/${{ steps.rename.outputs.FILE_NAME }} --expires-in 86400)
+          REPORT_URL=$(aws s3 presign s3://${{ secrets.S3_BUCKET_NAME }}/${{ steps.rename.outputs.REPORT_NAME }} --expires-in 86400)
+          echo "APK_URL=$APK_URL" >> $GITHUB_OUTPUT
+          echo "REPORT_URL=$REPORT_URL" >> $GITHUB_OUTPUT
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: 'eu-north-1'
+
+      - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
           artifacts: build/app/outputs/flutter-apk/${{ steps.rename.outputs.FILE_NAME }}
           token: ${{ secrets.TOKEN }}
-          tag: crm-${{ steps.rename.outputs.VERSION_NAME }}
-          name: CRM Release ${{ steps.rename.outputs.VERSION_NAME }}
+          tag: crm-${{ matrix.build_type }}-v1.0.0-${{ github.run_number }}
+          name: CRM ${{ matrix.build_type }} Build - v1.0.0-${{ github.run_number }}
           body: |
-            Automatically generated release for the **${{ github.ref_name }}** branch.
-            APK: [Download](${{ steps.presign.outputs.PRE_SIGNED_URL }})
-          draft: false
-          prerelease: false
+            🔹 **Branch:** `${{ github.ref_name }}`
+            🔹 **Build Type:** `${{ matrix.build_type }}`
+            🔹 **APK:** [Download APK](${{ steps.presign.outputs.APK_URL }})
+            🔹 **Test Report:** [View Test Report](${{ steps.presign.outputs.REPORT_URL }})
 
-      - name: Notify Slack with APK URL
+      - name: Notify Slack with APK and Report
         run: |
           curl -X POST -H 'Content-type: application/json' \
           --data "{
-            \"text\": \"New *${{ steps.rename.outputs.VERSION_NAME }}* CRM app APK build available:\n\n<${{ steps.presign.outputs.PRE_SIGNED_URL }}>\"
+            \"text\": \"New *${{ matrix.build_type }}* build available (v1.0.0-${{ github.run_number }}):\n🔗 APK: <${{ steps.presign.outputs.APK_URL }}>\n📄 Test Report: <${{ steps.presign.outputs.REPORT_URL }}>\"
           }" \
           ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      - name: Finish CI/CD
-        run: echo "Deployment complete. Slack notified, release published."
+      - name: Finish
+        run: echo "Build and deploy for ${{ matrix.build_type }} complete."
