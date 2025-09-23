@@ -1,6 +1,4 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:notes_crm/main.dart';
 import 'package:notes_crm/screens/login_screen.dart';
 
