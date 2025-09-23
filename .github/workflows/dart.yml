@@ -57,8 +57,8 @@ jobs:
 
       - name: Upload APK to AWS S3 Bucket
         uses: jakejarvis/s3-sync-action@master
-        with:
-          args: --acl public-read
+        # with:
+        #   args: --acl public-read
         env:
           AWS_S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
