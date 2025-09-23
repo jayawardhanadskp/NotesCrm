@@ -57,11 +57,29 @@ jobs:
 
       - name: Upload APK to AWS S3 Bucket
         uses: jakejarvis/s3-sync-action@master
-        # with:
-        #   args: --acl public-read
+        with:
+          args: --acl public-read
         env:
           AWS_S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: 'eu-north-1' 
           SOURCE_DIR: 'build/app/outputs/flutter-apk'
+
+      - name: Generate pre-signed APK URL
+        id: presign
+        run: |
+          URL=$(aws s3 presign s3://${{ secrets.S3_BUCKET_NAME }}/app-release.apk --expires-in 86400)
+          echo "PRE_SIGNED_URL=$URL" >> "$GITHUB_OUTPUT"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: 'eu-north-1'
+
+      - name: Notify Slack with APK URL
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{
+            \"text\": \"🚀 New Flutter APK build available:\n\n<${{ steps.presign.outputs.PRE_SIGNED_URL }}>\"
+          }" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
